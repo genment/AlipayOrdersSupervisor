@@ -23,7 +23,8 @@ const pusher = new Pusher(
     config.pushStateAPI,
     config.pushAppId,
     config.pushAppKey,
-    config.pushStateSecret
+    config.pushStateSecret,
+    config.serverType
 );
 
 const ax = axios.create({
@@ -51,7 +52,7 @@ ax.interceptors.response.use(function(response) {
 
 // 已推送成功的订单列表
 function restoreOrderList() {
-    const filename = `${moment().format("YYYY_MM_DD")}.json`;
+    const filename = `${moment().utcOffset(8).format("YYYY_MM_DD")}.json`;
     // 先add空值确保文件存在
     fs.writeFileSync("./orders/" + filename, "", { flag: "a" });
     const ordersString = fs.readFileSync("./orders/" + filename);
@@ -64,7 +65,7 @@ function restoreOrderList() {
 
 function backupOrderList() {
     const ordersString = JSON.stringify(orderList);
-    const filename = `${moment().format("YYYY_MM_DD")}.json`;
+    const filename = `${moment().utcOffset(8).format("YYYY_MM_DD")}.json`;
     fs.writeFileSync("./orders/" + filename, ordersString);
 }
 
@@ -155,7 +156,7 @@ function parseOrdersHtml(html) {
         // 备注
         orderData.memo = trim(orderRow.find(".memo-info").text());
         // 订单描述
-        orderData.description = trim(
+        orderData.desc = trim(
             orderRow
                 .children("td.name")
                 .children("p")
@@ -173,7 +174,6 @@ function parseOrdersHtml(html) {
         } else {
             orderData.tradeNo = trim(orderNoData[0].split(":")[1]);
         }
-
         // 对方支付宝用户名
         orderData.username = trim(
             decodeUnic(
@@ -197,8 +197,8 @@ function parseOrdersHtml(html) {
             .text();
 
         // 推送通知
-        if (orderData.amount > 0) {
-            pushStateToServer(orderData); // 仅对收入做处理
+        if (orderData.amount > 0 && orderData.status == "交易成功" && orderData.desc.indexOf("余额宝") < 0) {
+            pushStateToServer(orderData); // 仅对非余额宝的收入做处理
         }
     });
 
@@ -210,7 +210,7 @@ function parseOrdersHtml(html) {
 // 通知服务器
 function pushStateToServer(orderData) {
     if (orderList[orderData["tradeNo"]]) {
-        timePrefixLog("Order has been handled successfully, ignore this time");
+        timePrefixLog("Order #"+orderData.tradeNo+" has been handled successfully, ignored it.");
         return;
     }
 
@@ -242,7 +242,12 @@ function pushStateToServer(orderData) {
     };
 
     timePrefixLog("Start push order status to server");
-    pusher.pushState(orderData, callback);
+    
+    if (config.serverType == "LeanCloud") {
+        pusher.pushStateToLeanCloud(orderData, callback);
+    } else {
+        pusher.pushStateToDefaultServer(orderData, callback);
+    }
 }
 
 // 每日通过邮件报告

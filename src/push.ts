@@ -4,34 +4,76 @@ import * as crypto from "crypto";
 import config from "./config";
 import * as https from "https";
 import * as qs from "qs";
+import * as AV from "leancloud-storage"
 
 export default class Pusher {
     private api: string;
     private secret: string;
     private ax;
 
-    public constructor(apiUrl, appId, appKey, secret) {
-        this.api =
-            apiUrl +
-            "?appId=" +
-            appId +
-            "&appKey=" +
-            appKey +
-            "&event=new_order";
-        this.secret = secret;
-        this.ax = axios.create({
-            timeout: 10000,
-            withCredentials: true,
-            httpsAgent: new https.Agent({
-                rejectUnauthorized: false
-            }),
-            headers: {
-                "Content-type": "application/x-www-form-urlencoded"
+    private TradeInfo;
+
+    public constructor(apiUrl, appId, appKey, secret, serverType) {
+        if (serverType == "LeanCloud") {
+            AV.init({
+                appId: appId,
+                appKey: appKey
+            });
+            this.TradeInfo = AV.Object.extend("TradeInfo");
+        } else {
+            this.api =
+                apiUrl +
+                "?appId=" +
+                appId +
+                "&appKey=" +
+                appKey +
+                "&event=new_order";
+            this.secret = secret;
+            this.ax = axios.create({
+                timeout: 10000,
+                withCredentials: true,
+                httpsAgent: new https.Agent({
+                    rejectUnauthorized: false
+                }),
+                headers: {
+                    "Content-type": "application/x-www-form-urlencoded"
+                }
+            });
+        }
+    }
+
+    public pushStateToLeanCloud(orderData, callback) {
+        
+        let tradeInfo = new this.TradeInfo();
+        tradeInfo.set("tradeNo", orderData.tradeNo);
+        tradeInfo.set("orderId", orderData.orderId);
+        tradeInfo.set("tradeTime", orderData.time);
+        tradeInfo.set("username", orderData.username);
+        tradeInfo.set("amount", orderData.amount);
+        tradeInfo.set("desc", orderData.desc);
+        tradeInfo.set("memo", orderData.memo);
+        tradeInfo.set("status", orderData.status);
+        
+        new AV.Query("TradeInfo")
+        .equalTo("tradeNo",orderData.tradeNo)
+        .count()
+        .then(function(count){
+            if(count == 0){
+                tradeInfo.save()
+                    .then(function () {
+                    if (typeof callback == "function") {
+                        callback.call(this, null, "success");
+                    }
+                }, function (error) {
+                    if (typeof callback == "function") {
+                        callback.call(this, error);
+                    }
+                });
             }
         });
     }
 
-    public pushState(orderData, callback) {
+    public pushStateToDefaultServer(orderData, callback) {
         // 签名
         const md5 = crypto.createHash("md5");
         let sig = [
