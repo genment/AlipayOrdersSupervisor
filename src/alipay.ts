@@ -151,7 +151,7 @@ function parseOrdersHtml(html) {
         // 订单时间
         var timeSel = orderRow.children("td.time").children("p");
         orderData.time = new Date(
-            trim(timeSel.first().text()) + " " + trim(timeSel.last().text()));
+            trim(timeSel.first().text()) + " " + trim(timeSel.last().text()) + " +0800");
         // 备注
         orderData.memo = trim(orderRow.find(".memo-info").text());
         // 订单描述
