@@ -35,8 +35,7 @@ const ax = axios.create({
     }),
     responseType: "arraybuffer",
     headers: {
-        "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36",
         Cookie: config.alipayCookies
     }
 });
@@ -151,8 +150,8 @@ function parseOrdersHtml(html) {
         var orderRow = $(this);
         // 订单时间
         var timeSel = orderRow.children("td.time").children("p");
-        orderData.time =
-            trim(timeSel.first().text()) + " " + trim(timeSel.last().text());
+        orderData.time = new Date(
+            trim(timeSel.first().text()) + " " + trim(timeSel.last().text()));
         // 备注
         orderData.memo = trim(orderRow.find(".memo-info").text());
         // 订单描述
@@ -210,7 +209,7 @@ function parseOrdersHtml(html) {
 // 通知服务器
 function pushStateToServer(orderData) {
     if (orderList[orderData["tradeNo"]]) {
-        timePrefixLog("Order #"+orderData.tradeNo+" has been handled successfully, ignored it.");
+        timePrefixLog("Order #"+orderData.tradeNo+" has been handled successfully, ignore it.");
         return;
     }
 
@@ -231,13 +230,14 @@ function pushStateToServer(orderData) {
             orderList[orderData["tradeNo"]] = orderData;
             backupOrderList(); //将orderList保存到文件
             // Email报告
-            mailer.sendMail(
-                "[Success]Alipay Supervisor Service Notice",
-                "<b>A order is handled successfully in your alipay supervisor</b><br>The order info is: <pre>" +
-                    JSON.stringify(orderData) +
-                    "</pre>",
-                config.email
-            );
+            if (config.enableExNotify) {
+                mailer.sendMail(
+                    "[Success]Alipay Supervisor Service Notice",
+                    "<b>A order is handled successfully in your alipay supervisor</b><br>The order info is: <pre>" +
+                        JSON.stringify(orderData) +
+                        "</pre>",
+                    config.email
+            )};
         }
     };
 

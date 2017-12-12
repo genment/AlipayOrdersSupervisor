@@ -54,11 +54,11 @@ export default class Pusher {
         tradeInfo.set("memo", orderData.memo);
         tradeInfo.set("status", orderData.status);
         
-        new AV.Query("TradeInfo")
-        .equalTo("tradeNo",orderData.tradeNo)
-        .count()
-        .then(function(count){
-            if(count == 0){
+        // new AV.Query("TradeInfo")
+        // .equalTo("tradeNo",orderData.tradeNo)
+        // .count()
+        // .then(function(count){
+        //     if(count == 0){
                 tradeInfo.save()
                     .then(function () {
                     if (typeof callback == "function") {
@@ -69,8 +69,8 @@ export default class Pusher {
                         callback.call(this, error);
                     }
                 });
-            }
-        });
+        //     }
+        // });
     }
 
     public pushStateToDefaultServer(orderData, callback) {
